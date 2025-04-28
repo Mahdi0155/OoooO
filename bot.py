@@ -3,7 +3,7 @@ import threading
 import requests
 import os
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackContext, JobQueue
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackContext
 import logging
 from datetime import datetime, timedelta
 
@@ -21,6 +21,28 @@ WAITING_FOR_MEDIA, WAITING_FOR_CAPTION, WAITING_FOR_ACTION, WAITING_FOR_SCHEDULE
 
 # دیتا موقت
 user_data = {}
+
+# سرور Flask
+app_web = Flask('')
+
+@app_web.route('/')
+def home():
+    return "ربات آنلاین است."
+
+def run():
+    app_web.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
+def keep_alive():
+    t = threading.Thread(target=run)
+    t.start()
+
+# پینگ به خود برای جلوگیری از خواب
+async def ping_myself(context: ContextTypes.DEFAULT_TYPE):
+    try:
+        url = os.environ.get('RENDER_EXTERNAL_URL') or "https://ooooo-fiwm.onrender.com"
+        requests.get(url)
+    except Exception as e:
+        logger.error(f'خطا در پینگ خودکار: {e}')
 
 # شروع
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -64,7 +86,6 @@ async def handle_caption(update: Update, context: ContextTypes.DEFAULT_TYPE):
     final_caption = caption + "\n\n@hottof | تُفِ داغ"
     user_data[update.effective_user.id]['caption'] = final_caption
 
-    # پیش نمایش فایل
     keyboard = ReplyKeyboardMarkup(
         [['ارسال در کانال', 'ارسال در آینده'], ['برگشت به ابتدا']],
         resize_keyboard=True
@@ -107,7 +128,6 @@ async def handle_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     try:
         minutes = int(update.message.text)
-        send_time = datetime.utcnow() + timedelta(minutes=minutes)
 
         context.job_queue.run_once(send_scheduled, when=timedelta(minutes=minutes), data=user_id)
 
@@ -117,7 +137,7 @@ async def handle_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text('لطفاً فقط عدد وارد کنید.')
         return WAITING_FOR_SCHEDULE
 
-# ارسال مستقیم
+# ارسال مستقیم به کانال
 async def send_to_channel(context: ContextTypes.DEFAULT_TYPE, user_id):
     if user_id not in user_data:
         return
@@ -142,32 +162,12 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('عملیات لغو شد.', reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
-# پینگ به خود برای جلوگیری از Sleep
-async def ping_myself(context: ContextTypes.DEFAULT_TYPE):
-    try:
-        url = os.environ.get('RENDER_EXTERNAL_URL') or "https://ooooo-fiwm.onrender.com"
-        requests.get(url)
-    except Exception as e:
-        logger.error(f'خطا در پینگ خودکار: {e}')
 # اجرای ربات
 def main():
-    keep_alive()  # این خط رو اولین خط main بذار
+    keep_alive()
     app = Application.builder().token(TOKEN).build()
+
     app.job_queue.run_repeating(ping_myself, interval=300, first=10)
-    # سرور ساده‌ی Flask
-app_web = Flask('')
-
-@app_web.route('/')
-def home():
-    return "ربات آنلاین است."
-
-def run():
-    app_web.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
-def keep_alive():
-    t = threading.Thread(target=run)
-    t.start()
-    app = Application.builder().token(TOKEN).build()
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
