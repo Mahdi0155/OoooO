@@ -1,3 +1,7 @@
+from flask import Flask
+import threading
+import requests
+import os
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackContext, JobQueue
 import logging
@@ -140,6 +144,19 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # اجرای ربات
 def main():
+    # سرور ساده‌ی Flask
+app_web = Flask('')
+
+@app_web.route('/')
+def home():
+    return "ربات آنلاین است."
+
+def run():
+    app_web.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
+def keep_alive():
+    t = threading.Thread(target=run)
+    t.start()
     app = Application.builder().token(TOKEN).build()
 
     conv_handler = ConversationHandler(
