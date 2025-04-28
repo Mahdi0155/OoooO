@@ -1,43 +1,43 @@
-from flask import Flask
-import threading
-import requests
+from flask import Flask, request
 import os
 import logging
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackContext
+from telegram.ext import (
+    Application, CommandHandler, MessageHandler, filters,
+    ContextTypes, ConversationHandler, CallbackContext
+)
 from datetime import datetime, timedelta
 
 # اطلاعات ربات
 TOKEN = '7413532622:AAHamApedDzAGsPYz67RujmOXoUm0A4JvbQ'
 CHANNEL_USERNAME = '@hottof'
-ADMINS = [6378124502,6387942633,5459406429,7189616405]
+ADMINS = [6378124502, 6387942633, 5459406429, 7189616405]
 
 # مراحل گفتگو
 WAITING_FOR_MEDIA, WAITING_FOR_CAPTION, WAITING_FOR_ACTION, WAITING_FOR_SCHEDULE = range(4)
 
-# تنظیم لاگ
+# لاگ
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# سرور Flask
+# Flask app
 app_web = Flask(__name__)
+
+# ربات را از اینجا تعریف میکنیم
+application = Application.builder().token(TOKEN).build()
+
+@app_web.route('/webhook', methods=['POST'])
+def webhook():
+    if request.method == "POST":
+        update = Update.de_json(request.get_json(force=True), application.bot)
+        application.update_queue.put(update)
+    return "ok"
 
 @app_web.route('/')
 def home():
     return "ربات آنلاین است."
 
-def run_web():
-    app_web.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
-# پینگ برای جلوگیری از Sleep
-async def ping_myself(context: ContextTypes.DEFAULT_TYPE):
-    try:
-        url = os.environ.get('RENDER_EXTERNAL_URL') or "https://ooooo-fiwm.onrender.com"
-        requests.get(url)
-    except Exception as e:
-        logger.error(f'خطا در پینگ خودکار: {e}')
-
-# استارت
+# دستورات ربات
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMINS:
         await update.message.reply_text('شما دسترسی به این ربات ندارید.')
@@ -45,7 +45,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('سلام! لطفاً یک عکس یا ویدیو فوروارد کن.')
     return WAITING_FOR_MEDIA
 
-# دریافت مدیا
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMINS:
         return ConversationHandler.END
@@ -66,7 +65,6 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('لطفاً کپشن مورد نظر خود را بنویسید:')
     return WAITING_FOR_CAPTION
 
-# دریافت کپشن
 async def handle_caption(update: Update, context: ContextTypes.DEFAULT_TYPE):
     caption = update.message.text
     final_caption = caption + "\n\n@hottof | تُفِ داغ"
@@ -87,7 +85,6 @@ async def handle_caption(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     return WAITING_FOR_ACTION
 
-# پردازش عملیات
 async def handle_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
@@ -105,7 +102,6 @@ async def handle_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text('یکی از گزینه‌ها را انتخاب کنید.')
         return WAITING_FOR_ACTION
 
-# زمان‌بندی ارسال
 async def handle_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         minutes = int(update.message.text)
@@ -116,7 +112,6 @@ async def handle_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text('فقط عدد وارد کنید.')
         return WAITING_FOR_SCHEDULE
 
-# ارسال مستقیم
 async def send_to_channel(context: ContextTypes.DEFAULT_TYPE):
     data = context.user_data
     media_type = data['media_type']
@@ -128,7 +123,6 @@ async def send_to_channel(context: ContextTypes.DEFAULT_TYPE):
     elif media_type == 'video':
         await context.bot.send_video(chat_id=CHANNEL_USERNAME, video=file_id, caption=caption)
 
-# ارسال زمان‌بندی شده
 async def send_scheduled(context: CallbackContext):
     data = context.job.data
     media_type = data['media_type']
@@ -141,18 +135,12 @@ async def send_scheduled(context: CallbackContext):
     elif media_type == 'video':
         await bot.send_video(chat_id=CHANNEL_USERNAME, video=file_id, caption=caption)
 
-# لغو
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('لغو شد.', reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 # اجرای اصلی
 def main():
-    threading.Thread(target=run_web).start()
-
-    app = Application.builder().token(TOKEN).build()
-    app.job_queue.run_repeating(ping_myself, interval=300, first=10)
-
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -164,8 +152,15 @@ def main():
         fallbacks=[CommandHandler('cancel', cancel)],
     )
 
-    app.add_handler(conv_handler)
-    app.run_polling()
+    application.add_handler(conv_handler)
+
+    # ست کردن وبهوک
+    WEBHOOK_URL = os.environ.get('RENDER_EXTERNAL_URL', '') + '/webhook'
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.environ.get("PORT", 8080)),
+        webhook_url=WEBHOOK_URL
+    )
 
 if __name__ == '__main__':
     main()
