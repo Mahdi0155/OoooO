@@ -1,4 +1,3 @@
-from flask import Flask, request
 import os
 import logging
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
@@ -6,7 +5,7 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, filters,
     ContextTypes, ConversationHandler, CallbackContext
 )
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 # اطلاعات ربات
 TOKEN = '7413532622:AAHamApedDzAGsPYz67RujmOXoUm0A4JvbQ'
@@ -20,22 +19,8 @@ WAITING_FOR_MEDIA, WAITING_FOR_CAPTION, WAITING_FOR_ACTION, WAITING_FOR_SCHEDULE
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Flask app
-app_web = Flask(__name__)
-
-# ربات را از اینجا تعریف میکنیم
+# تعریف ربات
 application = Application.builder().token(TOKEN).build()
-
-@app_web.route('/webhook', methods=['POST'])
-def webhook():
-    if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        application.update_queue.put(update)
-    return "ok"
-
-@app_web.route('/')
-def home():
-    return "ربات آنلاین است."
 
 # دستورات ربات
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -155,7 +140,7 @@ def main():
     application.add_handler(conv_handler)
 
     # ست کردن وبهوک
-    WEBHOOK_URL = os.environ.get('RENDER_EXTERNAL_URL', '') + '/webhook'
+    WEBHOOK_URL = 'https://ooooo-fiwm.onrender.com/webhook'
     application.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 8080)),
