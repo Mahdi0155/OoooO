@@ -8,9 +8,9 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from datetime import datetime, timedelta
 
 # اطلاعات ربات
-TOKEN = 'توکن ربات'
+TOKEN = '7413532622:AAHamApedDzAGsPYz67RujmOXoUm0A4JvbQ'
 CHANNEL_USERNAME = '@hottof'
-ADMINS = [آیدی ادمین‌ها]
+ADMINS = [6378124502,6387942633,5459406429,7189616405]
 
 # مراحل گفتگو
 WAITING_FOR_MEDIA, WAITING_FOR_CAPTION, WAITING_FOR_ACTION, WAITING_FOR_SCHEDULE = range(4)
