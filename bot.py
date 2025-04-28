@@ -139,11 +139,11 @@ def main():
 
     application.add_handler(conv_handler)
 
-    # ست کردن وبهوک
-    WEBHOOK_URL = 'https://ooooo-fiwm.onrender.com/webhook'
+    WEBHOOK_URL = 'https://ooooo-fiwm.onrender.com/'  # اصلاح شده
+
     application.run_webhook(
         listen="0.0.0.0",
-        port=int(os.environ.get("PORT", 8080)),
+        port=int(os.environ.get("PORT", 8080)),  # اصلاح شده
         webhook_url=WEBHOOK_URL
     )
 
