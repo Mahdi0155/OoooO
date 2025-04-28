@@ -142,8 +142,18 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('عملیات لغو شد.', reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
+# پینگ به خود برای جلوگیری از Sleep
+async def ping_myself(context: ContextTypes.DEFAULT_TYPE):
+    try:
+        url = os.environ.get('RENDER_EXTERNAL_URL') or "https://ooooo-fiwm.onrender.com"
+        requests.get(url)
+    except Exception as e:
+        logger.error(f'خطا در پینگ خودکار: {e}')
 # اجرای ربات
 def main():
+    keep_alive()  # این خط رو اولین خط main بذار
+    app = Application.builder().token(TOKEN).build()
+    app.job_queue.run_repeating(ping_myself, interval=300, first=10)
     # سرور ساده‌ی Flask
 app_web = Flask('')
 
