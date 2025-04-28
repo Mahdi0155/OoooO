@@ -83,8 +83,8 @@ async def handle_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text == 'ارسال در کانال':
         await send_to_channel(context, user_id)
-        await update.message.reply_text('پیام با موفقیت در کانال ارسال شد.', reply_markup=ReplyKeyboardRemove())
-        return ConversationHandler.END
+        await update.message.reply_text('پیام با موفقیت در کانال ارسال شد.\n\nلطفاً یک عکس یا ویدیو فوروارد کن.', reply_markup=ReplyKeyboardRemove())
+        return WAITING_FOR_MEDIA
 
     elif text == 'ارسال در آینده':
         await update.message.reply_text('لطفاً زمان ارسال را به صورت دقیقه وارد کنید (مثلاً 5 یعنی 5 دقیقه بعد):', reply_markup=ReplyKeyboardRemove())
@@ -107,8 +107,8 @@ async def handle_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         context.job_queue.run_once(send_scheduled, when=timedelta(minutes=minutes), data=user_id)
 
-        await update.message.reply_text(f'پیام برای {minutes} دقیقه بعد زمان‌بندی شد.', reply_markup=ReplyKeyboardRemove())
-        return ConversationHandler.END
+        await update.message.reply_text(f'پیام برای {minutes} دقیقه بعد زمان‌بندی شد.\n\nلطفاً یک عکس یا ویدیو فوروارد کن.', reply_markup=ReplyKeyboardRemove())
+        return WAITING_FOR_MEDIA
     except ValueError:
         await update.message.reply_text('لطفاً فقط عدد وارد کنید.')
         return WAITING_FOR_SCHEDULE
