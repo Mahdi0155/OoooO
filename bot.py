@@ -3,12 +3,15 @@ import threading
 import requests
 import os
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackContext
+from telegram.ext import (
+    Application, CommandHandler, MessageHandler, filters,
+    ContextTypes, ConversationHandler, CallbackContext
+)
 import logging
 from datetime import datetime, timedelta
 
 # اطلاعات ربات
-TOKEN = '7413532622:AAEZctC6bHJvAR5L8wWyDkySTszjlDvQP3o'
+TOKEN = 'توکن ربات'
 CHANNEL_USERNAME = '@hottof'
 ADMINS = [7189616405, 5459406429, 6387942633]
 
@@ -22,8 +25,8 @@ WAITING_FOR_MEDIA, WAITING_FOR_CAPTION, WAITING_FOR_ACTION, WAITING_FOR_SCHEDULE
 # دیتا موقت
 user_data = {}
 
-# سرور Flask
-app_web = Flask('')
+# --- Flask Server ---
+app_web = Flask(__name__)
 
 @app_web.route('/')
 def home():
@@ -33,10 +36,9 @@ def run():
     app_web.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 def keep_alive():
-    t = threading.Thread(target=run)
-    t.start()
+    threading.Thread(target=run).start()
 
-# پینگ به خود برای جلوگیری از خواب
+# --- Job برای پینگ به خود ---
 async def ping_myself(context: ContextTypes.DEFAULT_TYPE):
     try:
         url = os.environ.get('RENDER_EXTERNAL_URL') or "https://ooooo-fiwm.onrender.com"
@@ -44,7 +46,7 @@ async def ping_myself(context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f'خطا در پینگ خودکار: {e}')
 
-# شروع
+# --- دستورات ربات ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMINS:
         await update.message.reply_text('شما دسترسی به این ربات ندارید.')
@@ -52,12 +54,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('سلام! لطفاً یک عکس یا ویدیو فوروارد کن.')
     return WAITING_FOR_MEDIA
 
-# دریافت فایل
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMINS:
         return ConversationHandler.END
 
     file_id = None
+    media_type = None
+
     if update.message.photo:
         file_id = update.message.photo[-1].file_id
         media_type = 'photo'
@@ -76,23 +79,24 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('لطفاً کپشن مورد نظر خود را بنویسید:')
     return WAITING_FOR_CAPTION
 
-# دریافت کپشن
 async def handle_caption(update: Update, context: ContextTypes.DEFAULT_TYPE):
     caption = update.message.text
-    if update.effective_user.id not in user_data:
+    user_id = update.effective_user.id
+
+    if user_id not in user_data:
         await update.message.reply_text('مشکلی پیش آمده، لطفاً از اول شروع کنید.')
         return ConversationHandler.END
 
     final_caption = caption + "\n\n@hottof | تُفِ داغ"
-    user_data[update.effective_user.id]['caption'] = final_caption
+    user_data[user_id]['caption'] = final_caption
 
     keyboard = ReplyKeyboardMarkup(
         [['ارسال در کانال', 'ارسال در آینده'], ['برگشت به ابتدا']],
         resize_keyboard=True
     )
 
-    media_type = user_data[update.effective_user.id]['media_type']
-    file_id = user_data[update.effective_user.id]['file_id']
+    media_type = user_data[user_id]['media_type']
+    file_id = user_data[user_id]['file_id']
 
     if media_type == 'photo':
         await update.message.reply_photo(file_id, caption=final_caption, reply_markup=keyboard)
@@ -101,7 +105,6 @@ async def handle_caption(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     return WAITING_FOR_ACTION
 
-# پردازش انتخاب
 async def handle_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     user_id = update.effective_user.id
@@ -116,14 +119,13 @@ async def handle_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return WAITING_FOR_SCHEDULE
 
     elif text == 'برگشت به ابتدا':
-        await update.message.reply_text('لغو شد. دوباره یک فایل بفرستید.', reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text('لغو شد. لطفاً دوباره یک فایل ارسال کنید.', reply_markup=ReplyKeyboardRemove())
         return WAITING_FOR_MEDIA
 
     else:
         await update.message.reply_text('لطفاً یکی از گزینه‌ها را انتخاب کنید.')
         return WAITING_FOR_ACTION
 
-# زمان‌بندی ارسال
 async def handle_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     try:
@@ -134,10 +136,9 @@ async def handle_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f'پیام برای {minutes} دقیقه بعد زمان‌بندی شد.\n\nلطفاً یک عکس یا ویدیو فوروارد کن.', reply_markup=ReplyKeyboardRemove())
         return WAITING_FOR_MEDIA
     except ValueError:
-        await update.message.reply_text('لطفاً فقط عدد وارد کنید.')
+        await update.message.reply_text('لطفاً فقط عدد صحیح وارد کنید.')
         return WAITING_FOR_SCHEDULE
 
-# ارسال مستقیم به کانال
 async def send_to_channel(context: ContextTypes.DEFAULT_TYPE, user_id):
     if user_id not in user_data:
         return
@@ -152,19 +153,18 @@ async def send_to_channel(context: ContextTypes.DEFAULT_TYPE, user_id):
     elif media_type == 'video':
         await context.bot.send_video(chat_id=CHANNEL_USERNAME, video=file_id, caption=caption)
 
-# ارسال زمان‌بندی شده
 async def send_scheduled(context: CallbackContext):
     user_id = context.job.data
     await send_to_channel(context, user_id)
 
-# لغو
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('عملیات لغو شد.', reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
-# اجرای ربات
+# --- راه‌اندازی ---
 def main():
     keep_alive()
+
     app = Application.builder().token(TOKEN).build()
 
     app.job_queue.run_repeating(ping_myself, interval=300, first=10)
