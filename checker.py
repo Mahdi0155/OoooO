@@ -6,6 +6,7 @@ import threading
 import time
 
 checker_app = Flask(__name__)
+checker_app = app
 BOT_TOKEN = "7679592392:AAHi7YBXB3wmCdsrzTnyURwyljDRvMckoVY"
 bot = TeleBot(BOT_TOKEN, threaded=True)
 
