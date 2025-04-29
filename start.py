@@ -1,5 +1,5 @@
 from threading import Thread
-from uploader import uploader_app as app
+from uploader import uploader_app
 from checker import app as checker_app
 
 if __name__ == '__main__':
