@@ -6,6 +6,7 @@ import threading
 import time
 
 uploader_app = Flask(__name__)
+uploader_app = app
 BOT_TOKEN = "7920918778:AAFM8JNgk4cUhn0_P81hkB1Y0cYifjdSt-M"
 bot = TeleBot(BOT_TOKEN, threaded=True)
 
