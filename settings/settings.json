@@ -1,4 +1,6 @@
 {
-  "uploader_channels": [],
-  "checker_channels": []
+  "checker": [
+    {"id": "@channel1", "name": "کانال اول"},
+    {"id": "@channel2", "name": "کانال دوم"}
+  ]
 }
